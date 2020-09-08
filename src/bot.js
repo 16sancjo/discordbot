@@ -55,13 +55,21 @@ client.on('message', async (message) => {
                 message.channel.send(`${user} has gear of...`);
                 
             } else {
-                const gear = new Gear({
-                    //_id: mongoose.Types.ObjectId(),
-                    userID: message.member,
-                    gearLink: args[0]
+                const filter = message.author.id;
+                const update = args[0];
+                Gear.findOneAndUpdate({ userID: filter }, {$set:{ gearLink: update }}, {new: true}, (err, doc) => {
+                    if (err) {
+                        console.log("Something wrong with updating data");
+                    }
                 });
-                gear.save()
-                .catch(err => console.log(err));
+                // code for adding a new user to the database
+                // const gear = new Gear({
+                //     //_id: mongoose.Types.ObjectId(),
+                //     userID: message.author.id,
+                //     gearLink: args[0]
+                // });
+                // gear.save()
+                // .catch(err => console.log(err));
 
                 message.channel.send('your gear has been updated');
             }
