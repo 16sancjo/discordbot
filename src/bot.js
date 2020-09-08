@@ -5,6 +5,10 @@ const client = new Client({
     partials:['MESSAGE', 'REACTION']
 });
 const PREFIX = "$";
+const mongoose = require("mongoose");
+const Gear = require("../models/gear.js");
+
+mongoose.connect('mongodb://localhost/Gear');
 
 client.on('ready', () => {
     console.log(`${client.user.tag} has logged in`);
@@ -42,6 +46,15 @@ client.on('message', async (message) => {
                 message.channel.send('User was banned succesfully.');
             } catch (error) {
                 message.channel.send('An error occured. Either I do not have permissions or the user was not found.');
+            }
+        } else if (CMD_NAME === 'gear') {   // if command entered is $gear
+            if (args.length === 0)
+                return message.reply('Please provide either a link to your gear or a user ID.');    // if no arguments are passed, will prompt user for info
+            const comm = message.guild.members.cache.get(args[0]);
+            if (comm) {
+                message.channel.send(`${comm} has gear of...`);
+            } else {
+                message.channel.send('that member was not found');
             }
         }
     }
