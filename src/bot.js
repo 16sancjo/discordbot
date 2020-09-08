@@ -50,11 +50,20 @@ client.on('message', async (message) => {
         } else if (CMD_NAME === 'gear') {   // if command entered is $gear
             if (args.length === 0)
                 return message.reply('Please provide either a link to your gear or a user ID.');    // if no arguments are passed, will prompt user for info
-            const comm = message.guild.members.cache.get(args[0]);
-            if (comm) {
-                message.channel.send(`${comm} has gear of...`);
+            const user = message.guild.members.cache.get(args[0]);
+            if (user) {
+                message.channel.send(`${user} has gear of...`);
+                
             } else {
-                message.channel.send('that member was not found');
+                const gear = new Gear({
+                    //_id: mongoose.Types.ObjectId(),
+                    userID: message.member,
+                    gearLink: args[0]
+                });
+                gear.save()
+                .catch(err => console.log(err));
+
+                message.channel.send('your gear has been updated');
             }
         }
     }
