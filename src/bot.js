@@ -5,10 +5,12 @@ const client = new Client({
     partials:['MESSAGE', 'REACTION']
 });
 const PREFIX = "$";
-const mongoose = require("mongoose");
 const Gear = require("../models/gear.js");
+const mongoose = require("mongoose");
+mongoose.set('useUnifiedTopology', true);
+mongoose.set('useFindAndModify', false);
 
-mongoose.connect('mongodb://localhost/Gear');
+mongoose.connect('mongodb://localhost/Gear', {useNewUrlParser: true});
 
 client.on('ready', () => {
     console.log(`${client.user.tag} has logged in`);
@@ -53,25 +55,29 @@ client.on('message', async (message) => {
             const user = message.guild.members.cache.get(args[0]);
             if (user) {
                 message.channel.send(`${user} has gear of...`);
+                Gear.findOne({
+                    userID: message.author.id
+                }, (err, gear) => {
+                    if (err) console.log(err);
+                    message.channel.send(gear.gearLink);
+                })
                 
             } else {
                 const filter = message.author.id;
                 const update = args[0];
-                Gear.findOneAndUpdate({ userID: filter }, {$set:{ gearLink: update }}, {new: true}, (err, doc) => {
-                    if (err) {
-                        console.log("Something wrong with updating data");
+                Gear.findOneAndUpdate({ userID: filter }, {$set:{ gearLink: update }}, {new: true}, (err, gear) => {
+                    if (err) console.log("Something wrong with updating data");
+                    if (!gear) {
+                        // code for adding a new user to the database
+                        const gear = new Gear({
+                        //_id: mongoose.Types.ObjectId(),
+                        userID: message.author.id,
+                        gearLink: args[0]
+                        });
+                        gear.save().catch(err => console.log(err));
                     }
                 });
-                // code for adding a new user to the database
-                // const gear = new Gear({
-                //     //_id: mongoose.Types.ObjectId(),
-                //     userID: message.author.id,
-                //     gearLink: args[0]
-                // });
-                // gear.save()
-                // .catch(err => console.log(err));
-
-                message.channel.send('your gear has been updated');
+                message.channel.send('your gear has been updated!');
             }
         }
     }
