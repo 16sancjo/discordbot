@@ -53,15 +53,15 @@ client.on('message', async (message) => {
             if (args.length === 0)
                 return message.reply('Please provide either a link to your gear or a user ID.');    // if no arguments are passed, will prompt user for info
             const user = message.guild.members.cache.get(args[0]);
-            if (user) {
-                message.channel.send(`${user} has gear of...`);
+            const member = message.mentions.users.first();
+            if (member) {
+                message.channel.send(`${member} has gear of...`);
                 Gear.findOne({
-                    userID: message.author.id
+                    userID: member.id
                 }, (err, gear) => {
-                    if (err) console.log(err);
                     message.channel.send(gear.gearLink);
+                    if (err) console.log(err);
                 })
-                
             } else {
                 const filter = message.author.id;
                 const update = args[0];
