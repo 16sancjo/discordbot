@@ -49,36 +49,43 @@ client.on('message', async (message) => {
             } catch (error) {
                 message.channel.send('An error occured. Either I do not have permissions or the user was not found.');
             }
-        } else if (CMD_NAME === 'gear') {   // if command entered is $gear
+        } else if (CMD_NAME === 'gear') {
             if (args.length === 0)
-                return message.reply('Please provide either a link to your gear or a user ID.');    // if no arguments are passed, will prompt user for info
-            const user = message.guild.members.cache.get(args[0]);
+                return message.reply('please provide either a link to your gear or a user ID.');
             const member = message.mentions.users.first();
             if (member) {
-                message.channel.send(`${member} has gear of...`);
+                //message.channel.send(`${member} has gear of...`);
                 Gear.findOne({
                     userID: member.id
                 }, (err, gear) => {
-                    message.channel.send(gear.gearLink);
                     if (err) console.log(err);
+                    if (!gear) {
+                        message.reply(`that user is not in the database.`);
+                    } else {
+                        message.channel.send(`${member.username} has gear of ${gear.gearLink}`);
+                    }
                 })
             } else {
                 const filter = message.author.id;
                 const update = args[0];
-                Gear.findOneAndUpdate({ userID: filter }, {$set:{ gearLink: update }}, {new: true}, (err, gear) => {
-                    if (err) console.log("Something wrong with updating data");
-                    if (!gear) {
-                        // code for adding a new user to the database
-                        const gear = new Gear({
-                        //_id: mongoose.Types.ObjectId(),
-                        userID: message.author.id,
-                        gearLink: args[0]
-                        });
-                        gear.save().catch(err => console.log(err));
-                    }
-                });
-                message.channel.send('your gear has been updated!');
+                if (validURL(args[0]) === true) {
+                    Gear.findOneAndUpdate({ userID: filter }, {$set:{ gearLink: update }}, {new: true}, (err, gear) => {
+                        if (err) console.log("Something wrong with updating data");
+                        if (!gear) {
+                            const gear = new Gear({
+                            userID: message.author.id,
+                            gearLink: args[0]
+                            });
+                            gear.save().catch(err => console.log(err)).then(message.channel.send('You have been added to the database!'));
+                        }
+                    });
+                    message.channel.send('your gear has been updated!');
+                } else {
+                    message.reply('invalid URL.');
+                }
             }
+        } else {
+            message.reply('Invalid command.');
         }
     }
 });
@@ -124,5 +131,15 @@ client.on('messageReactionRemove', (reaction, user) => {
         }
     }
 });
+
+function validURL(str) {
+    var pattern = new RegExp('^(https?:\\/\\/)?'+ // protocol
+    '((([a-z\\d]([a-z\\d-]*[a-z\\d])*)\\.)+[a-z]{2,}|'+ // domain name
+    '((\\d{1,3}\\.){3}\\d{1,3}))'+ // OR ip (v4) address
+    '(\\:\\d+)?(\\/[-a-z\\d%_.~+]*)*'+ // port and path
+    '(\\?[;&a-z\\d%_.~+=-]*)?'+ // query string
+    '(\\#[-a-z\\d_]*)?$','i'); // fragment locator
+  return !!pattern.test(str);
+}
 
 client.login(process.env.DISCORDJS_BOT_TOKEN);
