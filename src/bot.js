@@ -59,7 +59,8 @@ client.on('message', async (message) => {
                     if (!gear) {
                         message.reply(`that user is not in the database.`);
                     } else {
-                        message.channel.send(`${member.username} has gear of ${gear.gearLink}`);
+                        message.channel.send(`${member.username} has gear of`);
+                        message.channel.send(gear.gearLink);
                     }
                 })
             } else {
