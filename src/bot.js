@@ -6,11 +6,9 @@ const client = new Client({
 });
 const PREFIX = "$";
 const Gear = require("../models/gear.js");
-const mongoose = require("mongoose");
-mongoose.set('useUnifiedTopology', true);
-mongoose.set('useFindAndModify', false);
+const connectDB = require('../db.js');
 
-mongoose.connect('mongodb://localhost/Gear', {useNewUrlParser: true});
+connectDB();
 
 client.on('ready', () => {
     console.log(`${client.user.tag} has logged in`);
@@ -54,7 +52,6 @@ client.on('message', async (message) => {
                 return message.reply('please provide either a link to your gear or a user ID.');
             const member = message.mentions.users.first();
             if (member) {
-                //message.channel.send(`${member} has gear of...`);
                 Gear.findOne({
                     userID: member.id
                 }, (err, gear) => {
