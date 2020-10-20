@@ -1,28 +1,29 @@
 require ('dotenv').config();
 
-const {Client} = require('discord.js');
-const client = new Client({
+const {Client} = require('discord.js'); // Import client from discord.js
+const client = new Client({             // Start instance of client
     partials:['MESSAGE', 'REACTION']
 });
-const PREFIX = "$";
-const Gear = require("../models/gear.js");
-const connectDB = require('../db.js');
-
+const PREFIX = "$";                     // Prefix for the bot to use
+const Gear = require("../models/gear.js");  // Schema used for database
+const connectDB = require('../db.js');  // connect to MongoDB
 connectDB();
 
+// Logs to the console if the bot has succesfully logged in
 client.on('ready', () => {
     console.log(`${client.user.tag} has logged in`);
 });
 
 client.on('message', async (message) => {
-    if (message.author.bot) return;
-    if (message.content.startsWith(PREFIX)) {
+    if (message.author.bot) return;             // Ignores messages sent by bots
+    if (message.content.startsWith(PREFIX)) {   // If message starts with specified prefix
+        // Trims off the prefix and splits message into command (CMD_NAME) and an array of the passed args
         const [CMD_NAME, ...args] = message.content
         .trim()
         .substring(PREFIX.length)
-        .split(/\s+/);
+        .split(/\s+/);  // Regex to eliminate white spaces
 
-        if (CMD_NAME === 'kick') {
+        if (CMD_NAME === 'kick') {                      // Kick command
             if (!message.member.hasPermission('KICK_MEMBERS'))
                 return message.reply('You do not have permissions to use that command');
             if (args.length === 0)
@@ -35,7 +36,7 @@ client.on('message', async (message) => {
             } else {
                 message.channel.send('That member was not found');
             }
-        } else if (CMD_NAME === 'ban') {
+        } else if (CMD_NAME === 'ban') {                // Ban command
             if (!message.member.hasPermission('BAN_MEMBERS'))
                 return message.reply('You do not have permissions to use that command');
             if (args.length === 0)
@@ -47,7 +48,7 @@ client.on('message', async (message) => {
             } catch (error) {
                 message.channel.send('An error occured. Either I do not have permissions or the user was not found.');
             }
-        } else if (CMD_NAME === 'gear') {
+        } else if (CMD_NAME === 'gear') {               // Gearbot command
             if (args.length === 0)
                 return message.reply('please provide either a link to your gear or a user ID.');
             const member = message.mentions.users.first();
