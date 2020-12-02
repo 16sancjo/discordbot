@@ -1,12 +1,14 @@
 require ('dotenv').config();
 
-const {Client} = require('discord.js'); // Import client from discord.js
+const {Client, MessageEmbed} = require('discord.js'); // Import client from discord.js
 const client = new Client({             // Start instance of client
     partials:['MESSAGE', 'REACTION']
 });
 const PREFIX = "$";                     // Prefix for the bot to use
 const Gear = require("../models/gear.js");  // Schema used for database
 const connectDB = require('../db.js');  // connect to MongoDB
+const { collection } = require('../models/gear.js');
+const { Aggregate } = require('mongoose');
 connectDB();
 
 // Logs to the console if the bot has succesfully logged in
@@ -36,54 +38,124 @@ client.on('message', async (message) => {
             } else {
                 message.channel.send('That member was not found');
             }
-        } else if (CMD_NAME === 'ban') {                // Ban command
+
+        } else if (CMD_NAME === 'ban') {                    // Ban command
             if (!message.member.hasPermission('BAN_MEMBERS'))
                 return message.reply('You do not have permissions to use that command');
             if (args.length === 0)
                 return message.reply('Please provide an ID');
-
             try {
                 const user = await message.guild.members.ban(args[0]);
                 message.channel.send('User was banned succesfully.');
             } catch (error) {
                 message.channel.send('An error occured. Either I do not have permissions or the user was not found.');
             }
-        } else if (CMD_NAME === 'gear') {               // Gearbot command
-            if (args.length === 0)
+        
+        } else if (CMD_NAME === 'gear') {                   // Gearbot command
+            if (args.length === 0)      // If there are no arguments, requests the user for input
                 return message.reply('please provide either a link to your gear or a user ID.');
-            const member = message.mentions.users.first();
-            if (member) {
+            const member = message.mentions.users.first();  // Sets member to be who the user @'s
+            if (member) {       // If message contains a member
                 Gear.findOne({
-                    userID: member.id
-                }, (err, gear) => {
+                    userID: member.id   // Searches database for entry with userID matching the member ID
+                }, (err, gear) => {     // Passes the cursor
                     if (err) console.log(err);
-                    if (!gear) {
+                    if (!gear) {        // If no user exists with matching ID
                         message.reply(`that user is not in the database.`);
                     } else {
-                        message.channel.send(`${member.username} has gear of`);
-                        message.channel.send(gear.gearLink);
+                        message.channel.send(new MessageEmbed()
+                        .setColor('#07772B')
+                        .setTitle(member.username)
+                        .setDescription('AP: ' + gear.ap + '\nAAP: ' + gear.aap + '\nDP: ' + gear.dp)
+                        .setThumbnail('https://cdn.discordapp.com/attachments/742673775853830245/769642313449209867/IngenMix1.png')
+                        .setImage(gear.gearLink));
                     }
-                })
+                });
+
+            } else if (validURL(args[0] === true)) {    // Else if the message doesn't @ a user
+                const filter = message.author.id;       // filter is set to the message author ID
+                const update = args[0];             // Stores link to insert into DB
+                Gear.findOneAndUpdate({ userID: filter }, {$set:{ gearLink: update }}, {new: true}, (err, gear) => {
+                    if (err) console.log("Something wrong with updating data");
+                    if (!gear) {                    // If user is not in the DB we will create a new instance and add them
+                        const gear = new Gear({
+                        userID: message.author.id,
+                        gearLink: args[0]
+                        });
+                        gear.save().catch(err => console.log(err)).then(message.channel.send('You have been added to the database!'));
+                    }
+                });
+                message.channel.send('your gear has been updated!');
+
             } else {
-                const filter = message.author.id;
-                const update = args[0];
-                if (validURL(args[0]) === true) {
-                    Gear.findOneAndUpdate({ userID: filter }, {$set:{ gearLink: update }}, {new: true}, (err, gear) => {
-                        if (err) console.log("Something wrong with updating data");
-                        if (!gear) {
-                            const gear = new Gear({
-                            userID: message.author.id,
-                            gearLink: args[0]
-                            });
-                            gear.save().catch(err => console.log(err)).then(message.channel.send('You have been added to the database!'));
-                        }
+                message.channel.send('Invalid command arguments, try $help for more info.');
+            }
+
+        } else if (CMD_NAME === 'input') {                  // Input command
+            const user = message.author.id;
+            for (i = 0; i < args.length; i++) {
+                const update = args[i+1];
+
+                if (args[i] === 'ap') {
+                    Gear.findOneAndUpdate({ userID: user }, { $set: { ap: update }}, {new: true}, (err, gear) => {
+                        if (err) message.channel.send('Error updating your AP, try $help for more info.');
+                        else message.channel.send('Your AP has been updated!');
                     });
-                    message.channel.send('your gear has been updated!');
-                } else {
-                    message.reply('invalid URL.');
+                    i++;
+                } else if (args[i] === 'aap') {
+                    Gear.findOneAndUpdate({ userID: user }, { $set: { aap: update }}, {new: true}, (err, gear) => {
+                        if (err) message.channel.send('Error updating your Awakening AP, try $help for more info.')
+                        else message.channel.send('Your Awakening AP has been updated!');
+                    });
+                    i++;
+                } else if (args[i] === 'dp') {
+                    Gear.findOneAndUpdate({ userID: user }, { $set: { dp: update }}, {new: true}, (err, gear) => {
+                        if (err) message.channel.send('Error updating your DP, try $help for more info.');
+                        else message.channel.send('Your DP has been updated!');
+                    });
+                    i++;
                 }
             }
-        } else {
+
+        } else if (CMD_NAME === 'leaderboard') {                    // Leaderboard command
+            /* add multiple leaderboard top 10, 15, 20, 50 */
+            Gear.aggregate([
+                { $group: { _id: '$userID', gs:  { $sum: { $add: [{ $divide: [{$add: ['$ap', '$aap']}, 2] }, '$dp'] } } } }, // Group by userID and calculates gearscore ((ap+aap/2)+dp)
+                { $sort: { gs: -1 } },  // Sorts the group by ascending gearscore
+                { $limit: 10 }          // limits the output to top 10 only
+            ]).exec((err, res) => {
+                if (err) console.log(err);
+                // I have no idea what I did here
+                Gear.find().exec((err, ress) => {
+                    if (err) console.log(err);
+                    let embed = new MessageEmbed().setTitle("Leaderboard").setThumbnail('https://cdn.discordapp.com/attachments/742673775853830245/769642313449209867/IngenMix1.png');
+
+                    if (ress.length === 0)
+                        embed.setColor("RED").addField("No data found.");
+                    embed.setColor("#07772B");
+                    for (i = 0; i < ress.length; i++) {
+                        let member = message.guild.members.cache.get(ress[i].userID) || "User Left"     // Add family name field as solution -!
+                        message.guild.members.fetch(ress[i].userID);
+                        if (member === "User Left") {
+                            embed.addField(`${i+1}. ${member}`, `**AP:** ${ress[i].ap}` + ` **AAP:** ${ress[i].aap}` + ` **DP:** ${ress[i].dp}` + ` **GS:** ${Math.round(res[i].gs)}`);
+                        } else {
+                            embed.addField(`${i+1}. ${member.user.username}`, `**AP:** ${ress[i].ap}` + ` **AAP:** ${ress[i].aap}` + ` **DP:** ${ress[i].dp}` + ` **GS:** ${Math.round(res[i].gs)}`);
+                        }
+                    }
+                    message.channel.send(embed);
+                })
+            })
+        } else if (CMD_NAME === 'help') {
+            let embed = new MessageEmbed()
+            .setTitle('Help Center')
+            .setThumbnail('https://cdn.discordapp.com/attachments/742673775853830245/769642313449209867/IngenMix1.png')
+            .setColor('07772B')
+            .addField('$gear', 'To look up a users gear provide @user, to update your gear provide a valid link to your gear image.')
+            .addField('$leaderboard', 'Displays the top 25 players in the guild sorted by gearscore. If you do not use $input you will not show up on the leaderboard.')
+            .addField('$input', 'Manual input for your stats. use $input <stat> <number> to update. Example: $input ap 162. You can update more than one stat at a time. Example: $input ap 162 aap 203 dp 301');
+
+            message.channel.send(embed);
+        }else {
             message.reply('Invalid command.');
         }
     }
