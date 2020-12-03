@@ -4,7 +4,7 @@ const {Client, MessageEmbed} = require('discord.js'); // Import client from disc
 const client = new Client({             // Start instance of client
     partials:['MESSAGE', 'REACTION']
 });
-const PREFIX = "$";                     // Prefix for the bot to use
+const PREFIX = "&";                     // Prefix for the bot to use
 const Gear = require("../models/gear.js");  // Schema used for database
 const connectDB = require('../db.js');  // connect to MongoDB
 const { collection } = require('../models/gear.js');
