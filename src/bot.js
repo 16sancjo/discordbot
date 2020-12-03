@@ -18,7 +18,6 @@ client.on('ready', () => {
 
 client.on('message', async (message) => {
     if (message.author.bot) return;             // Ignores messages sent by bots
-    if (message.channel != 'bot_dev') return;
     if (message.content.startsWith(PREFIX)) {   // If message starts with specified prefix
         // Trims off the prefix and splits message into command (CMD_NAME) and an array of the passed args
         const [CMD_NAME, ...args] = message.content
