@@ -72,14 +72,13 @@ client.on('message', async (message) => {
                     }
                 });
 
-            } else if (validURL(args[0] === true)) {    // Else if the message doesn't @ a user
-            console.log(args[0]);
-            console.log(validURL(args[0] === true));
-                const filter = message.author.id;       // filter is set to the message author ID
-                const update = args[0];             // Stores link to insert into DB
+            } else {    // Else if the message doesn't @ a user
+            const filter = message.author.id;
+            const update = args[0];
+            if (validURL(args[0]) === true) {
                 Gear.findOneAndUpdate({ userID: filter }, {$set:{ gearLink: update }}, {new: true}, (err, gear) => {
                     if (err) console.log("Something wrong with updating data");
-                    if (!gear) {                    // If user is not in the DB we will create a new instance and add them
+                    if (!gear) {
                         const gear = new Gear({
                         userID: message.author.id,
                         gearLink: args[0]
@@ -88,10 +87,10 @@ client.on('message', async (message) => {
                     }
                 });
                 message.channel.send('your gear has been updated!');
-
             } else {
-                message.channel.send('Invalid command arguments, try $help for more info.');
+                message.reply('invalid URL.');
             }
+        }
 
         } else if (CMD_NAME === 'input') {                  // Input command
             const user = message.author.id;
