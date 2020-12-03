@@ -73,6 +73,8 @@ client.on('message', async (message) => {
                 });
 
             } else if (validURL(args[0] === true)) {    // Else if the message doesn't @ a user
+            console.log(args[0]);
+            console.log(validURL(args[0] === true));
                 const filter = message.author.id;       // filter is set to the message author ID
                 const update = args[0];             // Stores link to insert into DB
                 Gear.findOneAndUpdate({ userID: filter }, {$set:{ gearLink: update }}, {new: true}, (err, gear) => {
