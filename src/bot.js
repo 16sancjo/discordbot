@@ -140,7 +140,7 @@ client.on('message', async (message) => {
                     embed.setColor("RED").addField("No data found.");
                 embed.setColor("#07772B");
                 for (i = 0; i < res.length; i++) {
-                    let member = message.guild.members.cache.get(res[i].userID) || "User Left"     // Add family name field as solution -!
+                    let member = message.guild.members.cache.get(res[i]._id) || "User Left"     // Add family name field as solution -!
                     message.guild.members.fetch(res[i].userID);
                     if (member === "User Left") {
                         embed.addField(`${i + 1}. ${member}`, `**AP:** ${res[i].ap}` + ` **AAP:** ${res[i].aap}` + ` **DP:** ${res[i].dp}` + ` **GS:** ${Math.round(res[i].gs)}`);
