@@ -25,7 +25,7 @@ client.on('message', async (message) => {
             .substring(PREFIX.length)
             .split(/\s+/);  // Regex to eliminate white spaces
 
-        if (CMD_NAME === 'kick') {                      // Kick command
+        if (CMD_NAME === 'kick') {                          // Kick command
             if (!message.member.hasPermission('KICK_MEMBERS'))
                 return message.reply('You do not have permissions to use that command');
             if (args.length === 0)
@@ -68,14 +68,15 @@ client.on('message', async (message) => {
                             .setTitle(member.username)
                             .setDescription('AP: ' + gear.ap + '\nAAP: ' + gear.aap + '\nDP: ' + gear.dp)
                             .setThumbnail('https://cdn.discordapp.com/attachments/742673775853830245/769642313449209867/IngenMix1.png')
-                            .setImage(gear.gearLink));
+                            .setImage(gear.gearLink)
+                            .setFooter(gear.bio));
                     }
                 });
 
             } else {    // Else if the message doesn't @ a user
                 const filter = message.author.id;
                 const update = args[0];
-                if (validURL(args[0]) === true) {
+                if (validURL(args[0]) === true) {   // ---!
                     Gear.findOneAndUpdate({ userID: filter }, { $set: { gearLink: update } }, { new: true }, (err, gear) => {
                         if (err) console.log("Something wrong with updating data");
                         if (!gear) {
@@ -118,9 +119,8 @@ client.on('message', async (message) => {
                 }
             }
 
-        } else if (CMD_NAME === 'leaderboard') {                    // Leaderboard command
+        } else if (CMD_NAME === 'leaderboard') {            // Leaderboard command
             /* add multiple leaderboard top 10, 15, 20, 50 */
-            // ** GS is sorted properly, but stats and usernames are not properly tied ** //
             Gear.aggregate([
                 {
                     $project: {
@@ -149,17 +149,39 @@ client.on('message', async (message) => {
                     }
                 }
                 message.channel.send(embed);
-            })
+            });
         } else if (CMD_NAME === 'help') {
             let embed = new MessageEmbed()
                 .setTitle('Help Center')
                 .setThumbnail('https://cdn.discordapp.com/attachments/742673775853830245/769642313449209867/IngenMix1.png')
                 .setColor('07772B')
-                .addField('$gear', 'To look up a users gear provide @user, to update your gear provide a valid link to your gear image.')
-                .addField('$leaderboard', 'Displays the top 25 players in the guild sorted by gearscore. If you do not use $input you will not show up on the leaderboard.')
-                .addField('$input', 'Manual input for your stats. use $input <stat> <number> to update. Example: $input ap 162. You can update more than one stat at a time. Example: $input ap 162 aap 203 dp 301');
-
+                .addField('&gear', 'To look up a users gear provide @user, to update your gear provide a valid link to your gear image.')
+                .addField('&leaderboard', 'Displays the top 25 players in the guild sorted by gearscore. If you do not use &input you will not show up on the leaderboard.')
+                .addField('&input', 'Manual input for your stats. use &input <stat> <number> to update. Example: &input ap 162. You can update more than one stat at a time. Example: &input ap 162 aap 203 dp 301');
             message.channel.send(embed);
+        } else if (CMD_NAME === 'gearcolor') {
+
+        }
+        else if (CMD_NAME === 'gearbio') {
+            if (args.length === 0) {
+                return message.reply('Please enter a quote or introduction, keep it short!');
+            }
+            const user = message.author.id;
+            var input = '';
+            
+            for (i = 0; i < args.length; i++) {
+                var sub = args[i];
+                input += sub += ' ';
+            }
+            
+            Gear.findOneAndUpdate({ userID: user }, { $set: { bio: input } }, { new: true }, (err, gear) => {
+                if (err) {
+                    message.channel .send('Error updating your bio.');
+                    console.log(err);
+                }
+                else message.channel.send('Your bio has been updated!');
+            });
+
         } else {
             message.reply('Invalid command.');
         }
