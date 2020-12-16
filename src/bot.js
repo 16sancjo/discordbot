@@ -60,7 +60,7 @@ client.on('message', async (message) => {
                     userID: member.id   // Searches database for entry with userID matching the member ID
                 }, (err, gear) => {     // Passes the cursor
                     if (err) console.log(err);
-                    if (!gear) {        // If no user exists with matching ID
+                    if (gear.gearLink === null) {        // If no user exists with matching ID
                         message.reply(`that user is not in the database.`);
                     } else {
                         let embed = new MessageEmbed()
