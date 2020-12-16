@@ -63,13 +63,22 @@ client.on('message', async (message) => {
                     if (!gear) {        // If no user exists with matching ID
                         message.reply(`that user is not in the database.`);
                     } else {
-                        message.channel.send(new MessageEmbed()
-                            .setColor('#07772B')
+                        let embed = new MessageEmbed()
+                            .setColor(gear.color)
                             .setTitle(member.username)
                             .setDescription('AP: ' + gear.ap + '\nAAP: ' + gear.aap + '\nDP: ' + gear.dp)
                             .setThumbnail('https://cdn.discordapp.com/attachments/742673775853830245/769642313449209867/IngenMix1.png')
-                            .setImage(gear.gearLink)
-                            .setFooter(gear.bio));
+                            //.setImage(gear.gearLink)
+                            .setFooter(gear.bio);
+
+                        var link = gear.gearLink;
+                        if (link.includes('.gif') === true) {
+                            message.channel.send(embed);
+                            message.channel.send(link);
+                        } else {
+                            embed.setImage(gear.gearLink);
+                            message.channel.send(embed);
+                        }
                     }
                 });
 
@@ -82,7 +91,11 @@ client.on('message', async (message) => {
                         if (!gear) {
                             const gear = new Gear({
                                 userID: message.author.id,
-                                gearLink: args[0]
+                                gearLink: args[0],
+                                ap: 0,
+                                aap: 0,
+                                dp: 0,
+                                bio: ''
                             });
                             gear.save().catch(err => console.log(err)).then(message.channel.send('You have been added to the database!'));
                         }
@@ -101,18 +114,21 @@ client.on('message', async (message) => {
                 if (args[i] === 'ap') {
                     Gear.findOneAndUpdate({ userID: user }, { $set: { ap: update } }, { new: true }, (err, gear) => {
                         if (err) message.channel.send('Error updating your AP, try $help for more info.');
+                        if (!gear) message.channel.send('Please upload a gear pic first.');
                         else message.channel.send('Your AP has been updated!');
                     });
                     i++;
                 } else if (args[i] === 'aap') {
                     Gear.findOneAndUpdate({ userID: user }, { $set: { aap: update } }, { new: true }, (err, gear) => {
-                        if (err) message.channel.send('Error updating your Awakening AP, try $help for more info.')
+                        if (err) message.channel.send('Error updating your Awakening AP, try $help for more info.');
+                        if (!gear) message.channel.send('Please upload a gear pic first.');
                         else message.channel.send('Your Awakening AP has been updated!');
                     });
                     i++;
                 } else if (args[i] === 'dp') {
                     Gear.findOneAndUpdate({ userID: user }, { $set: { dp: update } }, { new: true }, (err, gear) => {
                         if (err) message.channel.send('Error updating your DP, try $help for more info.');
+                        if (!gear) message.channel.send('Please upload a gear pic first.');
                         else message.channel.send('Your DP has been updated!');
                     });
                     i++;
@@ -132,7 +148,7 @@ client.on('message', async (message) => {
                     }
                 }, // Group by userID and calculates gearscore ((ap+aap/2)+dp)
                 { $sort: { gs: -1 } },  // Sorts the group by ascending gearscore
-                { $limit: 10 }          // limits the output to top 10 only
+                { $limit: 25 }          // limits the output to top 10 only
             ]).exec((err, res) => {
                 if (err) console.log(err);
                 let embed = new MessageEmbed().setTitle("Leaderboard").setThumbnail('https://cdn.discordapp.com/attachments/742673775853830245/769642313449209867/IngenMix1.png');
@@ -150,21 +166,58 @@ client.on('message', async (message) => {
                 }
                 message.channel.send(embed);
             });
-        } else if (CMD_NAME === 'help') {
+        } else if (CMD_NAME === 'help') {                   // Help command
             let embed = new MessageEmbed()
                 .setTitle('Help Center')
                 .setThumbnail('https://cdn.discordapp.com/attachments/742673775853830245/769642313449209867/IngenMix1.png')
                 .setColor('07772B')
-                .addField('&gear', 'To look up a users gear provide @user, to update your gear provide a valid link to your gear image.')
+                .addField('&gear', 'To look up a users gear provide @user, to update your gear provide a valid link to your gear image. NOTE: It has to be a direct image link, ie. it ends with an extension.')
                 .addField('&leaderboard', 'Displays the top 25 players in the guild sorted by gearscore. If you do not use &input you will not show up on the leaderboard.')
-                .addField('&input', 'Manual input for your stats. use &input <stat> <number> to update. Example: &input ap 162. You can update more than one stat at a time. Example: &input ap 162 aap 203 dp 301');
+                .addField('&input', 'Manual input for your stats. use &input <stat> <number> to update. Example: &input ap 162. You can update more than one stat at a time. Example: &input ap 162 aap 203 dp 301')
+                .addField('&gearbio', 'Set a custom status or quote to display with your gear picture; limited to 40 characters so keep it short.')
+                .addField('&gearcolor', 'Set the embeded message card color, you can input `Ingenium` for a uniform green, `Ingenious` for a uniform purple, or your own custom color with a hex code. If you use a custom color it must start with `#`')
+                .setFooter('Developed by: Guren#7785 with help from you :)');
             message.channel.send(embed);
-        } else if (CMD_NAME === 'gearcolor') {
+        } else if (CMD_NAME === 'gearcolor') {              // Color command
+            if (args.length === 0)
+                return message.reply('Please enter "Ingenium", "Ingenious", or a custom color Hex code.');
 
-        }
-        else if (CMD_NAME === 'gearbio') {
+            var input = args[0].toUpperCase();
+            const user = message.author.id;
+            
+            
+            if (input === 'INGENIUM') {
+                const color = '#07772B'
+                Gear.findOneAndUpdate({ userID: user }, {$set: { color:  color } }, { new: true }, (err, gear) => {
+                    if (err) console.log(err);
+                    if (!gear) message.channel.send('Please upload a gear pic first.');
+                    else message.channel.send('Your color has been set.')
+                });
+            } else if (input === 'INGENIOUS') {
+                const color = '#8235B1'
+                Gear.findOneAndUpdate({ userID: user }, {$set: { color:  color } }, { new: true }, (err, gear) => {
+                    if (err) console.log(err);
+                    if (!gear) message.channel.send('Please upload a gear pic first.');
+                    else message.channel.send('Your color has been set.')
+                });
+            } else if (input.startsWith("#")) {
+                input = input.substring(1);
+
+                if (isHexColor(input) === true) {
+                    Gear.findOneAndUpdate({ userID: user }, {$set: { color:  input } }, { new: true }, (err, gear) => {
+                        if (err) console.log(err);
+                        if (!gear) message.channel.send('Please upload a gear pic first.');
+                        else message.channel.send('Your color has been set.')
+                    });
+                } else {
+                    message.reply('invalid hex-code.');
+                }
+            } else {
+                message.reply('invalid input. Try &help for more info.');
+            }
+        } else if (CMD_NAME === 'gearbio') {                // Bio command
             if (args.length === 0) {
-                return message.reply('Please enter a quote or introduction, keep it short!');
+                return message.reply('please enter a quote or introduction. Keep it short!');
             }
             const user = message.author.id;
             var input = '';
@@ -173,14 +226,19 @@ client.on('message', async (message) => {
                 var sub = args[i];
                 input += sub += ' ';
             }
-            
-            Gear.findOneAndUpdate({ userID: user }, { $set: { bio: input } }, { new: true }, (err, gear) => {
-                if (err) {
-                    message.channel .send('Error updating your bio.');
-                    console.log(err);
-                }
-                else message.channel.send('Your bio has been updated!');
-            });
+
+            if (input.length > 30) {
+                return message.channel.send('Keep it short! Less than 30 charcaters please.')
+            } else {
+                Gear.findOneAndUpdate({ userID: user }, { $set: { bio: input } }, { new: true }, (err, gear) => {
+                    if (err) {
+                        message.channel .send('Error updating your bio.');
+                        console.log(err);
+                    }
+                    else if (!gear) message.channel.send('Please upload a gear pic first.')
+                    else message.channel.send('Your bio has been updated!');
+                });
+            }
 
         } else {
             message.reply('Invalid command.');
@@ -239,5 +297,11 @@ function validURL(str) {
         '(\\#[-a-z\\d_]*)?$', 'i'); // fragment locator
     return !!pattern.test(str);
 }
+
+function isHexColor (hex) {
+    return typeof hex === 'string'
+        && hex.length === 6
+        && !isNaN(Number('0x' + hex))
+  }
 
 client.login(process.env.DISCORDJS_BOT_TOKEN);
