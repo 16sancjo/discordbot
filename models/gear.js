@@ -1,6 +1,7 @@
 const mongoose = require("mongoose");
 const gearSchema = mongoose.Schema({
     userID: String,
+    userName: String,
     gearLink: String,
     ap: Number,
     aap: Number,

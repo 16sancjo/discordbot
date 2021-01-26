@@ -60,7 +60,7 @@ client.on('message', async (message) => {
                     userID: member.id   // Searches database for entry with userID matching the member ID
                 }, (err, gear) => {     // Passes the cursor
                     if (err) console.log(err);
-                    if (!gear || !gear.gearLink) {        // If no user exists with matching ID
+                    if (!gear || !gear.gearLink) {        // If no user exists with matching ID --!
                         message.reply(`that user is not in the database.`);
                     } else {
                         let embed = new MessageEmbed()
@@ -84,13 +84,15 @@ client.on('message', async (message) => {
 
             } else {    // Else if the message doesn't @ a user
                 const filter = message.author.id;
+                const name = message.author.username;
                 const update = args[0];
                 if (validURL(args[0]) === true) {   // ---!
-                    Gear.findOneAndUpdate({ userID: filter }, { $set: { gearLink: update } }, { new: true }, (err, gear) => {
+                    Gear.findOneAndUpdate({ userID: filter }, { $set: { gearLink: update, userName: name} }, { new: true }, (err, gear) => {
                         if (err) console.log("Something wrong with updating data");
                         if (!gear) {
                             const gear = new Gear({
                                 userID: message.author.id,
+                                userName: message.author.username,
                                 gearLink: args[0],
                                 ap: 0,
                                 aap: 0,
@@ -141,6 +143,7 @@ client.on('message', async (message) => {
                 {
                     $project: {
                         _id: '$userID',
+                        username: '$userName',
                         ap: 1,
                         aap: 1,
                         dp: 1,
@@ -148,7 +151,7 @@ client.on('message', async (message) => {
                     }
                 }, // Group by userID and calculates gearscore ((ap+aap/2)+dp)
                 { $sort: { gs: -1 } },  // Sorts the group by ascending gearscore
-                { $limit: 25 }          // limits the output to top 10 only
+                { $limit: 25 }          // limits the output to top 25 only
             ]).exec((err, res) => {
                 if (err) console.log(err);
                 let embed = new MessageEmbed().setTitle("Leaderboard").setThumbnail('https://cdn.discordapp.com/attachments/742673775853830245/769642313449209867/IngenMix1.png');
@@ -156,13 +159,7 @@ client.on('message', async (message) => {
                     embed.setColor("RED").addField("No data found.");
                 embed.setColor("#07772B");
                 for (i = 0; i < res.length; i++) {
-                    let member = message.guild.members.cache.get(res[i]._id) || "User Left"     // Add family name field as solution -!
-                    message.guild.members.fetch(res[i]._id);
-                    if (member === "User Left") {
-                        embed.addField(`${i + 1}. ${member}`, `**AP:** ${res[i].ap}` + ` **AAP:** ${res[i].aap}` + ` **DP:** ${res[i].dp}` + ` **GS:** ${Math.round(res[i].gs)}`);
-                    } else {
-                        embed.addField(`${i + 1}. ${member.user.username}`, `**AP:** ${res[i].ap}` + ` **AAP:** ${res[i].aap}` + ` **DP:** ${res[i].dp}` + ` **GS:** ${Math.round(res[i].gs)}`);
-                    }
+                    embed.addField(`${i + 1}. ${res[i].username}`, `**AP:** ${res[i].ap}` + ` **AAP:** ${res[i].aap}` + ` **DP:** ${res[i].dp}` + ` **GS:** ${Math.round(res[i].gs)}`);
                 }
                 message.channel.send(embed);
             });
@@ -227,8 +224,8 @@ client.on('message', async (message) => {
                 input += sub += ' ';
             }
 
-            if (input.length > 30) {
-                return message.channel.send('Keep it short! Less than 30 charcaters please.')
+            if (input.length > 64) {
+                return message.channel.send('Keep it short! Less than 64 charcaters please.')
             } else {
                 Gear.findOneAndUpdate({ userID: user }, { $set: { bio: input } }, { new: true }, (err, gear) => {
                     if (err) {
