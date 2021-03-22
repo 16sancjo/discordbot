@@ -1,10 +1,10 @@
 require('dotenv').config();
 
-const { Client, MessageEmbed } = require('discord.js'); // Import client from discord.js
+const { Client, MessageEmbed, GuildAuditLogs } = require('discord.js'); // Import client from discord.js
 const client = new Client({             // Start instance of client
     partials: ['MESSAGE', 'REACTION']
 });
-const PREFIX = "&";                     // Prefix for the bot to use
+const PREFIX = "!";                     // Prefix for the bot to use
 const Gear = require("../models/gear.js");  // Schema used for database
 const connectDB = require('../db.js');  // connect to MongoDB
 const { collection } = require('../models/gear.js');
@@ -52,23 +52,19 @@ client.on('message', async (message) => {
             }
 
         } else if (CMD_NAME === 'gear') {                   // Gearbot command
-            if (args.length === 0)      // If there are no arguments, requests the user for input
-                return message.reply('please provide either a link to your gear or a user ID.');
-            const member = message.mentions.users.first();  // Sets member to be who the user @'s
-            if (member) {       // If message contains a member
-                Gear.findOne({
-                    userID: member.id   // Searches database for entry with userID matching the member ID
-                }, (err, gear) => {     // Passes the cursor
+            const member = message;
+            if (args.length === 0) {    // If there are no arguments, requests the user for input
+                
+                Gear.findOne({ userID: member.author.id }, (err, gear) => {
                     if (err) console.log(err);
-                    if (!gear || !gear.gearLink) {        // If no user exists with matching ID --!
-                        message.reply(`that user is not in the database.`);
+                    if (!gear || !gear.gearLink) {
+                        message.reply('You are not in the database. Please upload a gear-link.');
                     } else {
                         let embed = new MessageEmbed()
                             .setColor(gear.color)
-                            .setTitle(member.username)
+                            .setTitle(member.author.username)
                             .setDescription('AP: ' + gear.ap + '\nAAP: ' + gear.aap + '\nDP: ' + gear.dp)
                             .setThumbnail('https://cdn.discordapp.com/attachments/742673775853830245/769642313449209867/IngenMix1.png')
-                            //.setImage(gear.gearLink)
                             .setFooter(gear.bio);
 
                         var link = gear.gearLink;
@@ -81,7 +77,31 @@ client.on('message', async (message) => {
                         }
                     }
                 });
+            } else if (member.mentions.users.first()) {       // If message contains a member
+                Gear.findOne({
+                    userID: member.mentions.users.first().id   // Searches database for entry with userID matching the member ID
+                }, (err, gear) => {     // Passes the cursor
+                    if (err) console.log(err);
+                    if (!gear || !gear.gearLink) {        // If no user exists with matching ID --!
+                        message.reply(`that user is not in the database.`);
+                    } else {
+                        let embed = new MessageEmbed()
+                            .setColor(gear.color)
+                            .setTitle(member.mentions.users.first().username)
+                            .setDescription('AP: ' + gear.ap + '\nAAP: ' + gear.aap + '\nDP: ' + gear.dp)
+                            .setThumbnail('https://cdn.discordapp.com/attachments/742673775853830245/769642313449209867/IngenMix1.png')
+                            .setFooter(gear.bio);
 
+                        var link = gear.gearLink;
+                        if (link.includes('.gif') === true) {
+                            message.channel.send(embed);
+                            message.channel.send(link);
+                        } else {
+                            embed.setImage(gear.gearLink);
+                            message.channel.send(embed);
+                        }
+                    }
+                });
             } else {    // Else if the message doesn't @ a user
                 const filter = message.author.id;
                 const name = message.author.username;
@@ -112,22 +132,23 @@ client.on('message', async (message) => {
             const user = message.author.id;
             for (i = 0; i < args.length; i++) {
                 const update = args[i + 1];
+                var input = args[i].toUpperCase();
 
-                if (args[i] === 'ap') {
+                if (input === 'AP') {
                     Gear.findOneAndUpdate({ userID: user }, { $set: { ap: update } }, { new: true }, (err, gear) => {
                         if (err) message.channel.send('Error updating your AP, try $help for more info.');
                         if (!gear) message.channel.send('Please upload a gear pic first.');
                         else message.channel.send('Your AP has been updated!');
                     });
                     i++;
-                } else if (args[i] === 'aap') {
+                } else if (input === 'AAP') {
                     Gear.findOneAndUpdate({ userID: user }, { $set: { aap: update } }, { new: true }, (err, gear) => {
                         if (err) message.channel.send('Error updating your Awakening AP, try $help for more info.');
                         if (!gear) message.channel.send('Please upload a gear pic first.');
                         else message.channel.send('Your Awakening AP has been updated!');
                     });
                     i++;
-                } else if (args[i] === 'dp') {
+                } else if (input === 'DP') {
                     Gear.findOneAndUpdate({ userID: user }, { $set: { dp: update } }, { new: true }, (err, gear) => {
                         if (err) message.channel.send('Error updating your DP, try $help for more info.');
                         if (!gear) message.channel.send('Please upload a gear pic first.');
@@ -137,8 +158,8 @@ client.on('message', async (message) => {
                 }
             }
 
-        } else if (CMD_NAME === 'leaderboard') {            // Leaderboard command
-            /* add multiple leaderboard top 10, 15, 20, 50 */
+        } else if (CMD_NAME === 'leaderboard') {
+
             Gear.aggregate([
                 {
                     $project: {
@@ -150,19 +171,75 @@ client.on('message', async (message) => {
                         gs: { $sum: { $add: [{ $divide: [{ $add: ['$ap', '$aap'] }, 2] }, '$dp'] } },
                     }
                 }, // Group by userID and calculates gearscore ((ap+aap/2)+dp)
-                { $sort: { gs: -1 } },  // Sorts the group by ascending gearscore
-                { $limit: 25 }          // limits the output to top 25 only
+                { $sort: { gs: -1 } }  // Sorts the group by ascending gearscore
             ]).exec((err, res) => {
                 if (err) console.log(err);
-                let embed = new MessageEmbed().setTitle("Leaderboard").setThumbnail('https://cdn.discordapp.com/attachments/742673775853830245/769642313449209867/IngenMix1.png');
-                if (res.length === 0)
-                    embed.setColor("RED").addField("No data found.");
-                embed.setColor("#07772B");
-                for (i = 0; i < res.length; i++) {
-                    embed.addField(`${i + 1}. ${res[i].username}`, `**AP:** ${res[i].ap}` + ` **AAP:** ${res[i].aap}` + ` **DP:** ${res[i].dp}` + ` **GS:** ${Math.round(res[i].gs)}`);
+
+                const generateEmbed = start => {
+                    const current = res.slice(start, start + 25)
+                    const embed = new MessageEmbed()
+                        .setTitle("Leaderboard")
+                        .setColor("#07772B")
+                        .setThumbnail('https://cdn.discordapp.com/attachments/742673775853830245/769642313449209867/IngenMix1.png')
+                        current.forEach(g => embed.addField(`${g.username}`, `${g.ap}/${g.aap}/${g.dp} **GS:** ${Math.round(g.gs)}`))
+                        return embed
                 }
-                message.channel.send(embed);
+                const author = message.author
+                message.channel.send(generateEmbed(0)).then(message => {
+                    if (res.length <= 25) return
+                    message.react('➡️')
+                    const collector = message.createReactionCollector(
+                        (reaction, user) => ['⬅️','➡️'].includes(reaction.emoji.name) && user.id === author.id,
+                        {time:180000}
+                    )
+                    let currentIndex = 0
+                    collector.on('collect', reaction => {
+                        message.reactions.removeAll().then(async () => {
+                            reaction.emoji.name === '⬅️' ? currentIndex -= 25 : currentIndex += 25
+                            message.edit(generateEmbed(currentIndex))
+                            if (currentIndex !== 0) await message.react('⬅️')
+                            if (currentIndex + 25 < res.length) message.react('➡️')
+                        })
+                    })
+                })
+
+
+                // let embed = new MessageEmbed().setTitle("Leaderboard").setThumbnail('https://cdn.discordapp.com/attachments/742673775853830245/769642313449209867/IngenMix1.png');
+                // if (res.length === 0)
+                //     embed.setColor("RED").addField("No data found.");
+                // embed.setColor("#07772B");
+                // for (i = 0; i < res.length; i++) {
+                //     embed.addField(`${i + 1}. ${res[i].username}`, `**AP:** ${res[i].ap}` + ` **AAP:** ${res[i].aap}` + ` **DP:** ${res[i].dp}` + ` **GS:** ${Math.round(res[i].gs)}`);
+                // }
+                // message.channel.send(embed);
             });
+
+        // } else if (CMD_NAME === 'leaderboard') {            // Leaderboard command
+        //     /* add multiple leaderboard top 10, 15, 20, 50 */
+        //     Gear.aggregate([
+        //         {
+        //             $project: {
+        //                 _id: '$userID',
+        //                 username: '$userName',
+        //                 ap: 1,
+        //                 aap: 1,
+        //                 dp: 1,
+        //                 gs: { $sum: { $add: [{ $divide: [{ $add: ['$ap', '$aap'] }, 2] }, '$dp'] } },
+        //             }
+        //         }, // Group by userID and calculates gearscore ((ap+aap/2)+dp)
+        //         { $sort: { gs: -1 } },  // Sorts the group by ascending gearscore
+        //         { $limit: 25 }          // limits the output to top 25 only
+        //     ]).exec((err, res) => {
+        //         if (err) console.log(err);
+        //         let embed = new MessageEmbed().setTitle("Leaderboard").setThumbnail('https://cdn.discordapp.com/attachments/742673775853830245/769642313449209867/IngenMix1.png');
+        //         if (res.length === 0)
+        //             embed.setColor("RED").addField("No data found.");
+        //         embed.setColor("#07772B");
+        //         for (i = 0; i < res.length; i++) {
+        //             embed.addField(`${i + 1}. ${res[i].username}`, `**AP:** ${res[i].ap}` + ` **AAP:** ${res[i].aap}` + ` **DP:** ${res[i].dp}` + ` **GS:** ${Math.round(res[i].gs)}`);
+        //         }
+        //         message.channel.send(embed);
+        //     });
         } else if (CMD_NAME === 'help') {                   // Help command
             let embed = new MessageEmbed()
                 .setTitle('Help Center')
