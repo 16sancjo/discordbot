@@ -68,7 +68,7 @@ client.on('message', async (message) => {
                             .setFooter(gear.bio);
 
                         var link = gear.gearLink;
-                        if (link.includes('.gif') === true) {
+                        if (link.includes('.gif') === true || link.includes('.mp4') === true) {
                             message.channel.send(embed);
                             message.channel.send(link);
                         } else {
@@ -93,7 +93,7 @@ client.on('message', async (message) => {
                             .setFooter(gear.bio);
 
                         var link = gear.gearLink;
-                        if (link.includes('.gif') === true) {
+                        if (link.includes('.gif') === true || link.includes('.mp4') === true) {
                             message.channel.send(embed);
                             message.channel.send(link);
                         } else {
